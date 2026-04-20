@@ -1,0 +1,289 @@
+/* --- DASHBOARD TOPBAR --- */
+.dashboard-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  padding: 1rem 0.5rem 2rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.dashboard-topbar h1 {
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  margin: 0.5rem 0 0;
+  color: var(--text-strong);
+  letter-spacing: -0.04em;
+}
+
+.dashboard-topbar p {
+  margin: 0.5rem 0 0;
+  color: var(--text-muted);
+}
+
+/* --- PANEL GENERALES --- */
+.panel {
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  backdrop-filter: blur(20px);
+  background: linear-gradient(180deg, rgba(17, 24, 45, 0.6), rgba(7, 11, 22, 0.7));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: transform 0.3s ease;
+}
+
+.panel--toolbar {
+  display: grid;
+  gap: 1.5rem;
+}
+
+/* --- HEADER DEL PANEL (Administracion) --- */
+.panel__toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel__toolbar h2 {
+  margin: 0.5rem 0 0;
+  font-size: 1.8rem;
+  color: var(--text-strong);
+}
+
+/* --- FILTROS Y BUSCADOR --- */
+.panel__filters {
+  display: flex;
+  gap: 1rem;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.inline-form {
+  display: flex;
+  gap: 0.75rem;
+  align-items: end;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.inline-form .field {
+  min-width: min(280px, 100%);
+  max-width: 400px;
+  margin-bottom: 0;
+}
+
+.select-field {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--text-strong);
+  font-size: 0.92rem;
+  min-width: 140px;
+}
+
+.select-field span {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.select-field select {
+  height: 48px; /* Mismo alto que los inputs */
+}
+
+/* --- TABLA MODERNA --- */
+.panel--table {
+  padding: 0; /* La tabla toca los bordes del panel */
+  overflow: hidden;
+  display: grid;
+  gap: 0;
+}
+
+.table-shell {
+  overflow-x: auto; /* Scroll horizontal en móviles */
+  width: 100%;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.table thead th {
+  text-align: left;
+  color: var(--text-strong);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.table tbody tr {
+  transition: background 0.2s ease;
+  border-bottom: 1px solid var(--border);
+}
+
+.table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.table tbody td {
+  padding: 1.25rem 1.5rem;
+  color: var(--text);
+  font-size: 0.95rem;
+  vertical-align: middle;
+}
+
+/* --- BOTONES EN TABLA (Compactos) --- */
+.table .button {
+  padding: 0.5rem 0.8rem;
+  font-size: 0.85rem;
+  height: auto;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.table-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.table .button--danger {
+  color: var(--danger);
+}
+
+.table .button--danger:hover {
+  background: rgba(255, 107, 127, 0.15);
+  border-color: rgba(255, 107, 127, 0.4);
+}
+
+/* --- ESTADOS VACIOS Y PAGINACION --- */
+.empty-state,
+.pagination-hint {
+  padding: 2rem;
+  text-align: center;
+}
+
+.empty-state {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+}
+
+.pagination-hint {
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 1rem 1.5rem;
+  text-align: right;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* --- PANELES ESPECIALES --- */
+.panel--welcome {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(124, 92, 255, 0.1), rgba(7, 11, 22, 0.4));
+}
+
+.welcome-email {
+  min-width: 220px;
+  display: grid;
+  gap: 0.25rem;
+  padding: 1.2rem 1.5rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.welcome-email span {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.welcome-email strong {
+  color: var(--text-strong);
+  word-break: break-word;
+  font-size: 1.1rem;
+}
+
+.panel--analysis {
+  min-height: 400px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.panel--analysis h2 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  color: var(--text-strong);
+}
+
+/* --- FORMULARIO STACK --- */
+.stack-form {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.stack-form__actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 1080px) {
+  .dashboard-topbar {
+    align-items: start;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .panel__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .inline-form {
+    width: 100%;
+    flex-direction: column;
+  }
+  
+  .inline-form .field {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .panel {
+    padding: 1rem;
+  }
+  
+  .table thead th,
+  .table tbody td {
+    padding: 0.8rem;
+  }
+}
