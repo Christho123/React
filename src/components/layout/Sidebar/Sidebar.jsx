@@ -4,10 +4,10 @@ import './Sidebar.css'
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: 'D' },
-  { id: 'categories', label: 'Categoria', icon: 'C' },
-  { id: 'brands', label: 'Marca', icon: 'B' },
-  { id: 'suppliers', label: 'Proveedor', icon: 'S' },
   { id: 'analytics', label: 'Analisis', description: 'En desarrollo', icon: 'A' },
+  { id: 'categories', label: 'Categoria', icon: 'C' },
+  { id: 'brands', label: 'Marca', icon: 'M' },
+  { id: 'suppliers', label: 'Proveedor', icon: 'P' },
 ]
 
 export function Sidebar({ activeSection, onSectionChange, onLogout, user }) {

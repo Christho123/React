@@ -391,21 +391,23 @@ function EntityTable({ state }) {
             </Button>
           </form>
 
-          <label className="select-field">
-            <span>Por pagina</span>
-            <select
-              value={pageSize}
-              onChange={(event) => changePageSize(Number(event.target.value))}
-            >
-              {PAGE_SIZES.map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="panel__filters-right">
+            <label className="select-field">
+              <span>Por pagina</span>
+              <select
+                value={pageSize}
+                onChange={(event) => changePageSize(Number(event.target.value))}
+              >
+                {PAGE_SIZES.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <Button onClick={openCreate}>{config.createLabel}</Button>
+            <Button onClick={openCreate}>{config.createLabel}</Button>
+          </div>
         </div>
       </div>
 
