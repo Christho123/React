@@ -13,7 +13,7 @@
   width: min(100%, 560px);
   border-radius: var(--radius-xl);
   padding: 1.4rem;
-  background: linear-gradient(180deg, rgba(17, 24, 45, 0.96), rgba(7, 11, 22, 0.98));
+  background: var(--modal-bg);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
 }
@@ -36,7 +36,7 @@
   height: 2.5rem;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--control-bg);
   color: var(--text-strong);
   font-size: 1.4rem;
   line-height: 1;

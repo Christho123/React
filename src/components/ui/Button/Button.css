@@ -57,7 +57,7 @@
 
 .button--danger {
   background: rgba(255, 107, 127, 0.15);
-  color: #ffdce2;
+  color: var(--danger);
   border-color: rgba(255, 107, 127, 0.35);
   box-shadow: none;
 }

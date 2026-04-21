@@ -6,31 +6,15 @@
   position: relative;
 }
 
-/* --- CONTENIDO PRINCIPAL --- */
 .dashboard-shell__content {
-  /* EL ARREGLO CLAVE: Empujamos el contenido 280px a la derecha (ancho del sidebar) */
   margin-left: 280px;
-  
-  /* El ancho restante es el total menos el sidebar */
   width: calc(100% - 280px);
-  
-  /* Espaciado interno */
   padding: 2.5rem 3rem;
-  
   min-height: 100vh;
-  
-  /* FONDO: El degradado cosmic se ve aquí en el contenido, no en el body */
-  background:
-    radial-gradient(circle at top left, rgba(124, 92, 255, 0.26), transparent 35%),
-    radial-gradient(circle at top right, rgba(0, 212, 255, 0.16), transparent 28%),
-    linear-gradient(180deg, #070b16 0%, #0b1020 50%, #070b16 100%);
-  
-  /* Transición suave para cuando cambia el tamaño */
+  background: var(--content-bg);
   transition: margin-left 0.3s ease, width 0.3s ease;
 }
 
-/* --- RESPONSIVE (Móvil) --- */
-/* Cuando el Sidebar deja de ser fixed y se coloca encima (según tu Sidebar.css), quitamos el margen */
 @media (max-width: 1080px) {
   .dashboard-shell__content {
     margin-left: 0;

@@ -29,7 +29,7 @@
   border-radius: var(--radius-md);
   padding: 0.95rem 1rem;
   color: var(--text-strong);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--control-bg);
   outline: none;
   transition:
     border-color 160ms ease,
@@ -40,7 +40,7 @@
 .field__control:focus,
 .select-field select:focus {
   border-color: rgba(124, 92, 255, 0.65);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--control-bg-hover);
   box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.15);
 }
 

@@ -72,6 +72,27 @@ function looksLikeJsonResponse(response) {
   return contentType.includes('application/json')
 }
 
+function buildQuery(params = {}, mapping = {}) {
+  const searchParams = new URLSearchParams()
+  const pageKey = mapping.pageKey ?? 'page'
+  const pageSizeKey = mapping.pageSizeKey ?? 'page_size'
+
+  if (params.page != null && params.page !== '') {
+    searchParams.set(pageKey, String(params.page))
+  }
+
+  if (params.pageSize != null && params.pageSize !== '') {
+    searchParams.set(pageSizeKey, String(params.pageSize))
+  }
+
+  if (params.search) {
+    searchParams.set('search', params.search)
+  }
+
+  const query = searchParams.toString()
+  return query ? `?${query}` : ''
+}
+
 async function readResponseBody(response) {
   if (looksLikeJsonResponse(response)) {
     return response.json()
@@ -221,18 +242,7 @@ export async function authLogout() {
 }
 
 export async function getCategories(params = {}) {
-  const searchParams = new URLSearchParams()
-
-  if (params.perPage) {
-    searchParams.set('per_page', String(params.perPage))
-  }
-
-  if (params.search) {
-    searchParams.set('search', params.search)
-  }
-
-  const query = searchParams.toString()
-  return request(`/products/categories${query ? `?${query}` : ''}`)
+  return request(`/products/categories${buildQuery(params)}`)
 }
 
 export async function createCategory(payload) {
@@ -259,3 +269,72 @@ export async function getCategory(id) {
   return request(`/products/categories/${id}`)
 }
 
+export async function getBrands(params = {}) {
+  return request(`/products/brands${buildQuery(params)}`)
+}
+
+export async function createBrand(payload) {
+  return request('/products/brands', {
+    method: 'POST',
+    body: payload,
+  })
+}
+
+export async function updateBrand(id, payload) {
+  return request(`/products/brands/${id}`, {
+    method: 'PUT',
+    body: payload,
+  })
+}
+
+export async function patchBrand(id, payload) {
+  return request(`/products/brands/${id}`, {
+    method: 'PATCH',
+    body: payload,
+  })
+}
+
+export async function deleteBrand(id) {
+  return request(`/products/brands/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function getBrand(id) {
+  return request(`/products/brands/${id}`)
+}
+
+export async function getSuppliers(params = {}) {
+  return request(`/products/suppliers${buildQuery(params)}`)
+}
+
+export async function createSupplier(payload) {
+  return request('/products/suppliers', {
+    method: 'POST',
+    body: payload,
+  })
+}
+
+export async function updateSupplier(id, payload) {
+  return request(`/products/suppliers/${id}`, {
+    method: 'PUT',
+    body: payload,
+  })
+}
+
+export async function patchSupplier(id, payload) {
+  return request(`/products/suppliers/${id}`, {
+    method: 'PATCH',
+    body: payload,
+  })
+}
+
+export async function deleteSupplier(id) {
+  return request(`/products/suppliers/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function getSupplier(id) {
+  return request(`/products/suppliers/${id}`)
+}

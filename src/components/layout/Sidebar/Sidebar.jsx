@@ -3,80 +3,82 @@ import { useTheme } from '../../../context/ThemeContext.jsx'
 import './Sidebar.css'
 
 const menuItems = [
-  { id: 'dashboard', label: 'Dashboard', description: 'Inicio', icon: '⌂' },
-  { id: 'categories', label: 'Categorías', description: 'Gestión', icon: '▣' },
-  { id: 'analytics', label: 'Análisis', description: 'Estadísticas', icon: '◔' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'D' },
+  { id: 'categories', label: 'Categoria', icon: 'C' },
+  { id: 'brands', label: 'Marca', icon: 'B' },
+  { id: 'suppliers', label: 'Proveedor', icon: 'S' },
+  { id: 'analytics', label: 'Analisis', description: 'En desarrollo', icon: 'A' },
 ]
 
 export function Sidebar({ activeSection, onSectionChange, onLogout, user }) {
   const theme = useTheme()
+  const isDark = theme.theme === 'dark'
+  const initials = (user?.name ?? 'Usuario')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('')
 
-  // Imagen por defecto si no hay API
-  const defaultAvatar = `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=7c5cff&color=fff`
+  const nextThemeLabel = isDark ? 'Modo claro' : 'Modo oscuro'
+  const nextThemeAriaLabel = isDark
+    ? 'Cambiar a modo claro'
+    : 'Cambiar a modo oscuro'
 
   return (
     <aside className="sidebar">
-      {/* --- PERFIL MEJORADO (Avatar + Nombre + Email) --- */}
       <div className="sidebar__profile">
-        <img 
-          className="sidebar__avatar" 
-          src={user?.avatar || defaultAvatar} 
-          alt="Perfil" 
-        />
-        <div className="sidebar__user-info">
-          <h3 className="sidebar__name">{user?.name ?? 'Usuario'}</h3>
-          <span className="sidebar__email">{user?.email || 'usuario@ejemplo.com'}</span>
+        <div className="sidebar__avatar" aria-hidden="true">
+          {initials || 'U'}
         </div>
+        <strong className="sidebar__name">{user?.name ?? 'Usuario'}</strong>
       </div>
 
-      {/* --- NAVEGACIÓN --- */}
       <nav className="sidebar__nav" aria-label="Secciones del dashboard">
-        <ul className="sidebar__list">
-          {menuItems.map((item) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                className={`sidebar__nav-item ${
-                  activeSection === item.id ? 'is-active' : ''
-                }`}
-                onClick={() => onSectionChange(item.id)}
-              >
-                <span className="sidebar__nav-icon">{item.icon}</span>
-                <div className="sidebar__text-group">
-                  <strong className="sidebar__label">{item.label}</strong>
-                  <small className="sidebar__desc">{item.description}</small>
-                </div>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      {/* --- FOOTER (Tema + Logout) --- */}
-      <div className="sidebar__footer">
-        
-        {/* Toggle de Apariencia */}
-        <div className="sidebar__theme-wrapper">
+        {menuItems.map((item) => (
           <button
+            key={item.id}
             type="button"
-            className="theme-toggle"
-            onClick={theme.toggleTheme}
-            aria-label="Cambiar tema"
+            className={`sidebar__nav-item ${
+              activeSection === item.id ? 'is-active' : ''
+            }`}
+            onClick={() => onSectionChange(item.id)}
           >
-            <span className="theme-label">Modo Claro</span>
-            <span className="theme-toggle__pill" aria-hidden="true">
-              <span className={`theme-toggle__thumb ${theme.isDark ? 'dark' : 'light'}`} />
+            <span className="sidebar__nav-icon">{item.icon}</span>
+            <span className="sidebar__nav-text">
+              <strong>{item.label}</strong>
+              {item.description ? <small>{item.description}</small> : null}
             </span>
           </button>
-        </div>
+        ))}
+      </nav>
 
-        {/* Botón Cerrar Sesión */}
-        <Button 
-          variant="ghost" 
-          className="sidebar__logout-btn" 
-          onClick={onLogout}
+      <div className="sidebar__footer">
+        <button
+          type="button"
+          className="theme-toggle"
+          onClick={theme.toggleTheme}
+          aria-label={nextThemeAriaLabel}
         >
-          Cerrar sesión
+          <span className="theme-toggle__icon" aria-hidden="true">
+            {isDark ? '\u263E' : '\u2600'}
+          </span>
+
+          <span className="theme-toggle__label">{nextThemeLabel}</span>
+
+          <span
+            className={`theme-toggle__switch theme-toggle__switch--${
+              theme.theme
+            }`}
+            aria-hidden="true"
+          >
+            <span className="theme-toggle__knob" />
+            <span className="theme-toggle__state">{isDark ? 'OFF' : 'ON'}</span>
+          </span>
+        </button>
+
+        <Button variant="ghost" className="sidebar__logout" onClick={onLogout}>
+          Cerrar sesion
         </Button>
       </div>
     </aside>
