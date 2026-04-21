@@ -378,6 +378,12 @@ export async function createPurchase(payload) {
   })
 }
 
+export async function applyPurchasePriceUpdate(id) {
+  return request(`/inventory/purchases/${id}/apply-price-update`, {
+    method: 'POST',
+  })
+}
+
 export async function getPurchase(id) {
   return request(`/inventory/purchases/${id}`)
 }
@@ -399,4 +405,39 @@ export async function getSale(id) {
 
 export async function getStockMovements(params = {}) {
   return request(`/inventory/stock-movements${buildQuery(params)}`)
+}
+
+function buildStatsQuery(params = {}) {
+  const searchParams = new URLSearchParams()
+
+  if (params.range) {
+    searchParams.set('range', params.range)
+  }
+
+  if (params.threshold != null && params.threshold !== '') {
+    searchParams.set('threshold', String(params.threshold))
+  }
+
+  const query = searchParams.toString()
+  return query ? `?${query}` : ''
+}
+
+export async function getStockInflowStats(params = {}) {
+  return request(`/inventory/stats/stock-inflow${buildStatsQuery(params)}`)
+}
+
+export async function getPurchaseStats(params = {}) {
+  return request(`/inventory/stats/purchases${buildStatsQuery(params)}`)
+}
+
+export async function getSalesStats(params = {}) {
+  return request(`/inventory/stats/sales${buildStatsQuery(params)}`)
+}
+
+export async function getStockMovementStats(params = {}) {
+  return request(`/inventory/stats/stock-movements${buildStatsQuery(params)}`)
+}
+
+export async function getLowStockAlerts(params = {}) {
+  return request(`/inventory/stats/low-stock-alerts${buildStatsQuery(params)}`)
 }

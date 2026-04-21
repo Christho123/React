@@ -30,6 +30,7 @@
   padding: 0.95rem 1rem;
   color: var(--text-strong);
   background: var(--control-bg);
+  color-scheme: dark;
   outline: none;
   transition:
     border-color 160ms ease,
@@ -37,11 +38,32 @@
     box-shadow 160ms ease;
 }
 
+html[data-theme='light'] .field__control,
+html[data-theme='light'] .select-field select {
+  color-scheme: light;
+}
+
 .field__control:focus,
 .select-field select:focus {
   border-color: rgba(124, 92, 255, 0.65);
   background: var(--control-bg-hover);
   box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.15);
+}
+
+.field__control::placeholder {
+  color: var(--text-muted);
+}
+
+.field__control option,
+.select-field select option {
+  color: var(--text-strong);
+  background: var(--bg-soft);
+}
+
+html[data-theme='light'] .field__control option,
+html[data-theme='light'] .select-field select option {
+  color: #101828;
+  background: #ffffff;
 }
 
 textarea.field__control {

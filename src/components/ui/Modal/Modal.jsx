@@ -1,6 +1,6 @@
 import './Modal.css'
 
-export function Modal({ open, title, children, onClose }) {
+export function Modal({ open, title, eyebrow = 'Categorias', children, onClose }) {
   if (!open) {
     return null
   }
@@ -16,7 +16,7 @@ export function Modal({ open, title, children, onClose }) {
       >
         <div className="modal__header">
           <div>
-            <span className="panel__eyebrow">Categorias</span>
+            <span className="panel__eyebrow">{eyebrow}</span>
             <h2>{title}</h2>
           </div>
           <button type="button" className="modal__close" onClick={onClose}>

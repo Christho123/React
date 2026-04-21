@@ -125,7 +125,7 @@
 }
 
 .sidebar__submenu.is-open {
-  max-height: 140px;
+  max-height: 240px;
   opacity: 1;
   transform: translateY(0);
 }

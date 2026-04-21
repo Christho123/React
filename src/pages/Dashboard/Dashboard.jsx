@@ -1,9 +1,20 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { Sidebar } from '../../components/layout/Sidebar/Sidebar.jsx'
 import { DashboardLayout } from '../../components/layout/DashboardLayout/DashboardLayout.jsx'
 import { Button } from '../../components/ui/Button/Button.jsx'
 import { Input } from '../../components/ui/Input/Input.jsx'
 import { Modal } from '../../components/ui/Modal/Modal.jsx'
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart as RechartsBarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import {
   createBrand,
   createCategory,
@@ -11,12 +22,14 @@ import {
   createPurchase,
   createSale,
   createSupplier,
+  applyPurchasePriceUpdate,
   deleteBrand,
   deleteCategory,
   deleteProduct,
   deleteSupplier,
   getBrands,
   getCategories,
+  getLowStockAlerts,
   getProducts,
   getPurchase,
   getPurchases,
@@ -24,6 +37,10 @@ import {
   getSales,
   getSuppliers,
   getStockMovements,
+  getPurchaseStats,
+  getSalesStats,
+  getStockInflowStats,
+  getStockMovementStats,
   updateBrand,
   updateCategory,
   updateProduct,
@@ -589,15 +606,144 @@ function DashboardWelcome({ user }) {
   )
 }
 
-function AnalysisEmpty() {
+function AnalysisSection({ workspace }) {
+  if (!workspace) {
+    return null
+  }
+
+  const { loading, error, stats } = workspace
+  const inflowSeries = useMemo(() => stats.inflow?.series ?? [], [stats.inflow])
+  const purchasesSeries = useMemo(() => stats.purchases?.series ?? [], [stats.purchases])
+  const salesSeries = useMemo(() => stats.sales?.series ?? [], [stats.sales])
+  const movementsSeries = useMemo(() => stats.movements?.series ?? [], [stats.movements])
+  const lowStockItems = useMemo(() => stats.lowStock?.items ?? [], [stats.lowStock])
+
   return (
-    <section className="panel panel--analysis">
-      <span className="panel__eyebrow">Analisis</span>
-      <h2>En desarrollo</h2>
-      <p>
-        Esta seccion se reservan para graficas, KPIs y metricas cuando agregues
-        los endpoints de reportes.
-      </p>
+    <section className="dashboard-content section-fade analytics-page">
+      <div className="panel panel--analysis analytics-hero">
+        <div>
+          <span className="panel__eyebrow">Analisis</span>
+          <h2>Graficos Analiticos</h2>
+          <p>
+            Monitoreo de ingreso de stock, compras, ventas, movimientos y alertas
+            de productos con inventario bajo.
+          </p>
+        </div>
+        <div className="analytics-hero__stats">
+          <div>
+            <span>Total entradas</span>
+            <strong>{stats.inflow?.summary?.total_quantity ?? 0}</strong>
+          </div>
+          <div>
+            <span>Total compras</span>
+            <strong>{stats.purchases?.summary?.total_purchases ?? 0}</strong>
+          </div>
+          <div>
+            <span>Total ventas</span>
+            <strong>{stats.sales?.summary?.total_sales ?? 0}</strong>
+          </div>
+        </div>
+      </div>
+
+      {error ? <div className="form-alert">{error}</div> : null}
+      {loading ? <div className="form-alert form-alert--success">Cargando estadisticas...</div> : null}
+
+      <div className="analytics-grid">
+        <StatsCard
+          eyebrow="Stock"
+          title="Ingreso de stock"
+          value={stats.inflow?.summary?.total_quantity ?? 0}
+          description={`Periodo ${stats.inflow?.period?.start ?? '-'} al ${stats.inflow?.period?.end ?? '-'}`}
+        >
+          <LineChart series={inflowSeries} valueKey="quantity" stroke="#7c5cff" />
+        </StatsCard>
+
+        <StatsCard
+          eyebrow="Compras"
+          title="Compras registradas"
+          value={stats.purchases?.summary?.total_purchases ?? 0}
+          description={`Periodo ${stats.purchases?.period?.start ?? '-'} al ${stats.purchases?.period?.end ?? '-'}`}
+        >
+          <BarChart series={purchasesSeries} valueKey="count" barColor="#00d4ff" />
+        </StatsCard>
+
+        <StatsCard
+          eyebrow="Ventas"
+          title="Ventas registradas"
+          value={stats.sales?.summary?.total_sales ?? 0}
+          description={`Periodo ${stats.sales?.period?.start ?? '-'} al ${stats.sales?.period?.end ?? '-'}`}
+        >
+          <BarChart series={salesSeries} valueKey="count" barColor="#67e8a5" />
+        </StatsCard>
+
+        <StatsCard
+          eyebrow="Movimientos"
+          title="Entradas y salidas"
+          value={stats.movements?.summary?.total_movements ?? 0}
+          description={`Entradas: ${stats.movements?.summary?.entries_count ?? 0} | Salidas: ${stats.movements?.summary?.exits_count ?? 0}`}
+        >
+          <LineChart series={movementsSeries} valueKey="entries_quantity" stroke="#7c5cff" />
+        </StatsCard>
+      </div>
+
+      <div className="analytics-grid analytics-grid--bottom">
+        <article className="panel analytics-card analytics-card--dual">
+          <div className="analytics-card__header">
+            <span className="panel__eyebrow">Stock</span>
+            <div>
+              <h3>Movimientos de stock</h3>
+              <strong>{stats.movements?.summary?.total_movements ?? 0}</strong>
+            </div>
+          </div>
+
+          <div className="analytics-dual">
+            <div className="analytics-dual__chart">
+              <BarChart series={movementsSeries} valueKey="entries_quantity" barColor="#00d4ff" />
+            </div>
+            <div className="analytics-dual__chart">
+              <BarChart series={movementsSeries} valueKey="exits_quantity" barColor="#ff6b7f" />
+            </div>
+          </div>
+
+          <div className="analytics-dual__legend">
+            <span>
+              Entradas: {stats.movements?.summary?.entries_quantity ?? 0}
+            </span>
+            <span>
+              Salidas: {stats.movements?.summary?.exits_quantity ?? 0}
+            </span>
+          </div>
+        </article>
+
+        <article className="panel analytics-card analytics-card--alerts">
+          <div className="analytics-card__header">
+            <span className="panel__eyebrow">Alertas</span>
+            <div>
+              <h3>Productos con stock bajo</h3>
+              <strong>{stats.lowStock?.total ?? 0}</strong>
+            </div>
+          </div>
+
+          <div className="analytics-alerts">
+            {lowStockItems.length ? (
+              lowStockItems.map((item) => (
+                <div key={item.product_id} className="analytics-alerts__item">
+                  <div>
+                    <strong>{item.name}</strong>
+                    <span>Stock actual: {item.stock}</span>
+                  </div>
+                  <div>
+                    <span>Compra: {formatMoney(item.price_purchase)}</span>
+                    <span>Venta: {formatMoney(item.price_sale)}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="empty-state">No hay alertas de stock bajo.</div>
+            )}
+          </div>
+        </article>
+      </div>
     </section>
   )
 }
@@ -673,6 +819,274 @@ function normalizeLedgerItem(item) {
   }
 }
 
+function normalizePriceUpdateItem(item, index) {
+  const currentPrice = Number(
+    item.current_price ?? item.currentPrice ?? item.price_purchase ?? item.old_price ?? 0,
+  )
+  const newPrice = Number(item.new_price ?? item.newPrice ?? item.unit_price ?? 0)
+
+  return {
+    id: item.id ?? `${item.product_id ?? 'item'}-${index}`,
+    name: item.product?.name ?? item.product_name ?? item.name ?? `Producto ${index + 1}`,
+    currentPrice: Number.isFinite(currentPrice) ? currentPrice : 0,
+    newPrice: Number.isFinite(newPrice) ? newPrice : 0,
+  }
+}
+
+function formatMoney(value) {
+  const amount = Number(value)
+  return Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
+}
+
+function formatAnalyticsDate(value) {
+  return new Intl.DateTimeFormat('es-PE', {
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(`${value}T00:00:00`))
+}
+
+function normalizeAnalyticsSeries(series = [], valueKey = 'quantity') {
+  return series.map((item, index) => ({
+    label: formatAnalyticsDate(item.date ?? `${index}`),
+    rawLabel: item.date ?? `${index}`,
+    value: Number(item[valueKey] ?? 0),
+    item,
+  }))
+}
+
+function AnalyticsTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) {
+    return null
+  }
+
+  return (
+    <div className="analytics-tooltip">
+      <strong>{label}</strong>
+      {payload.map((entry) => (
+        <span key={entry.dataKey}>
+          {entry.name}: {entry.value}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function LineChart({ series, valueKey = 'quantity', stroke = '#7c5cff' }) {
+  const data = normalizeAnalyticsSeries(series, valueKey)
+  if (!data.length) {
+    return <div className="empty-state">Sin datos para mostrar.</div>
+  }
+
+  return (
+    <div className="analytics-chart">
+      <ResponsiveContainer width="100%" height={260}>
+        <AreaChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+          <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+            axisLine={{ stroke: 'var(--border)' }}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+            axisLine={{ stroke: 'var(--border)' }}
+            tickLine={false}
+          />
+          <Tooltip content={<AnalyticsTooltip />} />
+          <defs>
+            <linearGradient id={`area-fill-${stroke.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={stroke} stopOpacity="0.35" />
+              <stop offset="100%" stopColor={stroke} stopOpacity="0.03" />
+            </linearGradient>
+          </defs>
+          <Area
+            type="monotone"
+            dataKey="value"
+            name="Cantidad"
+            stroke={stroke}
+            fill={`url(#area-fill-${stroke.replace('#', '')})`}
+            strokeWidth={3}
+            dot={{ r: 3, strokeWidth: 2, fill: 'var(--bg-soft)' }}
+            activeDot={{ r: 5 }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
+function BarChart({ series, valueKey = 'count', barColor = '#00d4ff' }) {
+  const data = normalizeAnalyticsSeries(series, valueKey)
+  if (!data.length) {
+    return <div className="empty-state">Sin datos para mostrar.</div>
+  }
+
+  return (
+    <div className="analytics-chart">
+      <ResponsiveContainer width="100%" height={260}>
+        <RechartsBarChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+          <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+            axisLine={{ stroke: 'var(--border)' }}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+            axisLine={{ stroke: 'var(--border)' }}
+            tickLine={false}
+          />
+          <Tooltip content={<AnalyticsTooltip />} />
+          <Bar dataKey="value" name="Cantidad" fill={barColor} radius={[8, 8, 0, 0]} />
+        </RechartsBarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
+function StatsCard({ eyebrow, title, value, description, children }) {
+  return (
+    <article className="panel analytics-card">
+      <div className="analytics-card__header">
+        <span className="panel__eyebrow">{eyebrow}</span>
+        <div>
+          <h3>{title}</h3>
+          <strong>{value}</strong>
+        </div>
+      </div>
+      {description ? <p className="analytics-card__description">{description}</p> : null}
+      {children}
+    </article>
+  )
+}
+
+function useAnalyticsWorkspace(enabled) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [stats, setStats] = useState({
+    inflow: null,
+    purchases: null,
+    sales: null,
+    movements: null,
+    lowStock: null,
+  })
+
+  useEffect(() => {
+    if (!enabled) {
+      return
+    }
+
+    let cancelled = false
+
+    const load = async () => {
+      setLoading(true)
+      setError('')
+
+      try {
+        const [inflow, purchases, sales, movements, lowStock] = await Promise.all([
+          getStockInflowStats({ range: 'week' }),
+          getPurchaseStats({ range: 'month' }),
+          getSalesStats({ range: 'month' }),
+          getStockMovementStats({ range: 'month' }),
+          getLowStockAlerts({ threshold: 15 }),
+        ])
+
+        if (!cancelled) {
+          setStats({
+            inflow: inflow?.data ?? null,
+            purchases: purchases?.data ?? null,
+            sales: sales?.data ?? null,
+            movements: movements?.data ?? null,
+            lowStock: lowStock?.data ?? null,
+          })
+        }
+      } catch (requestError) {
+        if (!cancelled) {
+          setError(requestError.message)
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [enabled])
+
+  return { loading, error, stats }
+}
+
+function useLowStockNotice(enabled) {
+  const [notice, setNotice] = useState(null)
+  const lastSeenSignature = useRef('')
+  const dismissedSignature = useRef('')
+
+  useEffect(() => {
+    if (!enabled) {
+      return
+    }
+
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const response = await getLowStockAlerts({ threshold: 15 })
+        if (cancelled) {
+          return
+        }
+
+        const data = response?.data ?? {}
+        const items = data.items ?? []
+
+        if (!items.length) {
+          setNotice(null)
+          lastSeenSignature.current = ''
+          return
+        }
+
+        const signature = items
+          .map((item) => `${item.product_id}:${item.stock}`)
+          .join('|')
+
+        if (signature !== lastSeenSignature.current && signature !== dismissedSignature.current) {
+          lastSeenSignature.current = signature
+          setNotice({
+            signature,
+            total: data.total ?? items.length,
+            items,
+          })
+        }
+      } catch {
+        // Silently ignore background polling errors.
+      }
+    }
+
+    load()
+    const intervalId = window.setInterval(load, 120000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
+  }, [enabled])
+
+  const dismiss = () => {
+    if (notice?.signature) {
+      dismissedSignature.current = notice.signature
+    }
+    setNotice(null)
+  }
+
+  return { notice, dismiss }
+}
+
 function usePurchaseWorkspace(enabled) {
   const list = useResourceList({
     listFn: getPurchases,
@@ -681,6 +1095,12 @@ function usePurchaseWorkspace(enabled) {
   })
   const supplierLookup = useLookupOptions(getSuppliers, enabled)
   const productLookup = useLookupOptions(getProducts, enabled)
+  const [submitting, setSubmitting] = useState(false)
+  const [statusMessage, setStatusMessage] = useState('')
+  const [submitError, setSubmitError] = useState('')
+  const [priceUpdatePrompt, setPriceUpdatePrompt] = useState(null)
+  const [priceUpdateLoading, setPriceUpdateLoading] = useState(false)
+  const [priceUpdateError, setPriceUpdateError] = useState('')
   const [form, setForm] = useState({
     supplier_id: '',
     date: todayDateInput(),
@@ -735,15 +1155,82 @@ function usePurchaseWorkspace(enabled) {
 
   const submitForm = async (event) => {
     event.preventDefault()
+    setSubmitting(true)
+    setPriceUpdateError('')
+    setStatusMessage('')
+    setSubmitError('')
+    list.setSelectedItem(null)
 
-    await createPurchase({
-      supplier_id: Number(form.supplier_id),
-      date: form.date,
-      items: form.items.map(normalizeLedgerItem),
-    })
+    try {
+      const response = await createPurchase({
+        supplier_id: Number(form.supplier_id),
+        date: form.date,
+        items: form.items.map(normalizeLedgerItem),
+      })
 
-    resetForm()
-    await list.reload()
+      const purchase = response?.data ?? response ?? null
+      const flags = response?.flags ?? {}
+      const purchaseId = purchase?.id ?? null
+
+      resetForm()
+      try {
+        await list.reload()
+      } catch (reloadError) {
+        setSubmitError(reloadError.message)
+      }
+
+      if (flags.required && purchaseId) {
+        setPriceUpdatePrompt({
+          purchaseId,
+          message:
+            flags.message ??
+            'El precio de costo ha cambiado. ¿Deseas actualizar el precio base del producto?',
+          items: (flags.items ?? []).map(normalizePriceUpdateItem),
+        })
+        setStatusMessage('La compra se registró correctamente. Revisa la confirmación de precios.')
+      } else {
+        setStatusMessage(response?.message ?? 'Compra registrada correctamente.')
+      }
+    } catch (requestError) {
+      setStatusMessage('')
+      setSubmitError(requestError.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const cancelPriceUpdate = () => {
+    if (priceUpdateLoading) {
+      return
+    }
+
+    setPriceUpdatePrompt(null)
+    setPriceUpdateError('')
+  }
+
+  const confirmPriceUpdate = async () => {
+    if (!priceUpdatePrompt?.purchaseId) {
+      return
+    }
+
+    setPriceUpdateLoading(true)
+    setPriceUpdateError('')
+    setStatusMessage('')
+
+    try {
+      const response = await applyPurchasePriceUpdate(priceUpdatePrompt.purchaseId)
+      setStatusMessage(response?.message ?? 'Precio base actualizado correctamente.')
+      setPriceUpdatePrompt(null)
+      try {
+        await list.reload()
+      } catch (reloadError) {
+        setSubmitError(reloadError.message)
+      }
+    } catch (requestError) {
+      setPriceUpdateError(requestError.message)
+    } finally {
+      setPriceUpdateLoading(false)
+    }
   }
 
   return {
@@ -754,11 +1241,19 @@ function usePurchaseWorkspace(enabled) {
     productsLoading: productLookup.loading,
     form,
     setForm,
+    submitting,
+    statusMessage,
+    submitError,
+    priceUpdatePrompt,
+    priceUpdateLoading,
+    priceUpdateError,
     updateLineItem,
     addLineItem,
     removeLineItem,
     resetForm,
     submitForm,
+    cancelPriceUpdate,
+    confirmPriceUpdate,
   }
 }
 
@@ -875,6 +1370,12 @@ function PurchaseSection({ activeSubsection, workspace }) {
     supplierOptions,
     productOptions,
     form,
+    submitting,
+    statusMessage,
+    submitError,
+    priceUpdatePrompt,
+    priceUpdateLoading,
+    priceUpdateError,
     updateLineItem,
     addLineItem,
     removeLineItem,
@@ -884,6 +1385,8 @@ function PurchaseSection({ activeSubsection, workspace }) {
     goToNextPage,
     selectItem,
     submitForm,
+    cancelPriceUpdate,
+    confirmPriceUpdate,
   } = workspace
 
   const listColumns = [
@@ -1022,7 +1525,9 @@ function PurchaseSection({ activeSubsection, workspace }) {
               <Button type="button" variant="secondary" onClick={addLineItem}>
                 Agregar producto
               </Button>
-              <Button type="submit">Guardar compra</Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Guardando...' : 'Guardar compra'}
+              </Button>
             </div>
           </form>
         </div>
@@ -1072,6 +1577,8 @@ function PurchaseSection({ activeSubsection, workspace }) {
         </div>
       ) : null}
 
+      {statusMessage ? <div className="form-alert form-alert--success">{statusMessage}</div> : null}
+      {submitError ? <div className="form-alert">{submitError}</div> : null}
       {error ? <div className="form-alert">{error}</div> : null}
 
       <RecordTable
@@ -1102,6 +1609,54 @@ function PurchaseSection({ activeSubsection, workspace }) {
           </Button>
         </div>
       </div>
+
+      <Modal
+        open={Boolean(priceUpdatePrompt)}
+        title="Actualizar precio base"
+        eyebrow="Compras"
+        onClose={cancelPriceUpdate}
+      >
+        <div className="price-update-modal">
+          <p className="price-update-modal__message">
+            {priceUpdatePrompt?.message ??
+              'El precio de costo ha cambiado. ¿Deseas actualizar el precio base del producto?'}
+          </p>
+
+          <div className="price-update-modal__list">
+            {(priceUpdatePrompt?.items ?? []).length ? (
+              priceUpdatePrompt.items.map((item) => {
+                const difference = item.newPrice - item.currentPrice
+
+                return (
+                  <div key={item.id} className="price-update-modal__item">
+                    <div>
+                      <strong>{item.name}</strong>
+                      <span>Precio actual: {formatMoney(item.currentPrice)}</span>
+                    </div>
+                    <div>
+                      <span>Nuevo precio: {formatMoney(item.newPrice)}</span>
+                      <span>Diferencia: {formatMoney(difference)}</span>
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              <div className="empty-state">No hay productos para actualizar.</div>
+            )}
+          </div>
+
+          {priceUpdateError ? <div className="form-alert">{priceUpdateError}</div> : null}
+
+          <div className="stack-form__actions">
+            <Button type="button" variant="secondary" onClick={cancelPriceUpdate} disabled={priceUpdateLoading}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={confirmPriceUpdate} disabled={priceUpdateLoading}>
+              {priceUpdateLoading ? 'Actualizando...' : 'Actualizar precios'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </section>
   )
 }
@@ -1723,6 +2278,8 @@ export function DashboardPage() {
   const purchases = usePurchaseWorkspace(activeSection === 'purchases')
   const sales = useSalesWorkspace(activeSection === 'sales')
   const inventory = useInventoryWorkspace(activeSection === 'inventory')
+  const analytics = useAnalyticsWorkspace(activeSection === 'analytics')
+  const lowStockNotice = useLowStockNotice(true)
 
   const sectionState = {
     products,
@@ -1750,7 +2307,9 @@ export function DashboardPage() {
           user={auth.user}
         />
       }
-      >
+      notice={lowStockNotice.notice}
+      onNoticeClose={lowStockNotice.dismiss}
+    >
         {activeSection === 'dashboard' ? (
           <div className="dashboard-topbar">
             <div>
@@ -1761,7 +2320,7 @@ export function DashboardPage() {
         ) : null}
 
         {activeSection === 'dashboard' ? <DashboardWelcome user={auth.user} /> : null}
-        {activeSection === 'analytics' ? <AnalysisEmpty /> : null}
+        {activeSection === 'analytics' ? <AnalysisSection workspace={analytics} /> : null}
         {activeSection === 'products' ? <EntityTable state={sectionState.products} /> : null}
 
         {activeSection === 'categories' ? <EntityTable state={sectionState.categories} /> : null}
@@ -1788,3 +2347,4 @@ export function DashboardPage() {
       </DashboardLayout>
     )
 }
+

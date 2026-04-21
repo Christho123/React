@@ -4,10 +4,17 @@ import './Sidebar.css'
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: 'D' },
-  { id: 'products', label: 'Productos', icon: 'P' },
-  { id: 'categories', label: 'Categoria', icon: 'C' },
-  { id: 'brands', label: 'Marca', icon: 'M' },
-  { id: 'suppliers', label: 'Proveedor', icon: 'S' },
+  { id: 'analytics', label: 'Analisis', icon: 'A' },
+  {
+    id: 'products',
+    label: 'Productos',
+    icon: 'P',
+    submenu: [
+      { id: 'categories', label: 'Categoria', section: 'categories' },
+      { id: 'brands', label: 'Marca', section: 'brands' },
+      { id: 'suppliers', label: 'Proveedor', section: 'suppliers' },
+    ],
+  },
   {
     id: 'purchases',
     label: 'Compras',
@@ -27,7 +34,7 @@ const menuItems = [
     ],
   },
   { id: 'inventory', label: 'Inventory', icon: 'I' },
-  { id: 'analytics', label: 'Analisis', description: 'En desarrollo', icon: 'A' },
+  
 ]
 
 export function Sidebar({
@@ -62,7 +69,9 @@ export function Sidebar({
 
       <nav className="sidebar__nav" aria-label="Secciones del dashboard">
         {menuItems.map((item) => {
-          const isActive = activeSection === item.id
+          const isActive =
+            activeSection === item.id ||
+            item.submenu?.some((subItem) => activeSection === subItem.section)
           const isExpanded = Boolean(item.submenu) && isActive
 
           return (
@@ -71,7 +80,7 @@ export function Sidebar({
                 type="button"
                 className={`sidebar__nav-item ${isActive ? 'is-active' : ''}`}
                 onClick={() =>
-                  onSectionChange(item.id, item.submenu?.[0]?.id ?? null)
+                  onSectionChange(item.id, item.id === 'products' ? null : item.submenu?.[0]?.id ?? null)
                 }
                 aria-expanded={isExpanded}
               >
@@ -89,9 +98,17 @@ export function Sidebar({
                       key={subItem.id}
                       type="button"
                       className={`sidebar__submenu-item ${
-                        isActive && activeSubsection === subItem.id ? 'is-active' : ''
+                        activeSection === (subItem.section ?? item.id) &&
+                        activeSubsection === subItem.id
+                          ? 'is-active'
+                          : ''
                       }`}
-                      onClick={() => onSectionChange(item.id, subItem.id)}
+                      onClick={() =>
+                        onSectionChange(
+                          subItem.section ?? item.id,
+                          subItem.section ? null : subItem.id,
+                        )
+                      }
                     >
                       {subItem.label}
                     </button>
