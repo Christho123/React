@@ -338,3 +338,65 @@ export async function deleteSupplier(id) {
 export async function getSupplier(id) {
   return request(`/products/suppliers/${id}`)
 }
+
+export async function getProducts(params = {}) {
+  return request(`/products/products${buildQuery(params)}`)
+}
+
+export async function createProduct(payload) {
+  return request('/products/products', {
+    method: 'POST',
+    body: payload,
+  })
+}
+
+export async function updateProduct(id, payload) {
+  return request(`/products/products/${id}`, {
+    method: 'PUT',
+    body: payload,
+  })
+}
+
+export async function deleteProduct(id) {
+  return request(`/products/products/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function getProduct(id) {
+  return request(`/products/products/${id}`)
+}
+
+export async function getPurchases(params = {}) {
+  return request(`/inventory/purchases${buildQuery(params)}`)
+}
+
+export async function createPurchase(payload) {
+  return request('/inventory/purchases', {
+    method: 'POST',
+    body: payload,
+  })
+}
+
+export async function getPurchase(id) {
+  return request(`/inventory/purchases/${id}`)
+}
+
+export async function getSales(params = {}) {
+  return request(`/inventory/sales${buildQuery(params)}`)
+}
+
+export async function createSale(payload) {
+  return request('/inventory/sales', {
+    method: 'POST',
+    body: payload,
+  })
+}
+
+export async function getSale(id) {
+  return request(`/inventory/sales/${id}`)
+}
+
+export async function getStockMovements(params = {}) {
+  return request(`/inventory/stock-movements${buildQuery(params)}`)
+}

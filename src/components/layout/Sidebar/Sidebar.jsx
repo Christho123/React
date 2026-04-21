@@ -4,13 +4,39 @@ import './Sidebar.css'
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: 'D' },
-  { id: 'analytics', label: 'Analisis', description: 'En desarrollo', icon: 'A' },
+  { id: 'products', label: 'Productos', icon: 'P' },
   { id: 'categories', label: 'Categoria', icon: 'C' },
   { id: 'brands', label: 'Marca', icon: 'M' },
-  { id: 'suppliers', label: 'Proveedor', icon: 'P' },
+  { id: 'suppliers', label: 'Proveedor', icon: 'S' },
+  {
+    id: 'purchases',
+    label: 'Compras',
+    icon: 'R',
+    submenu: [
+      { id: 'create', label: 'Compra' },
+      { id: 'detail', label: 'Detalle compra' },
+    ],
+  },
+  {
+    id: 'sales',
+    label: 'Ventas',
+    icon: 'V',
+    submenu: [
+      { id: 'create', label: 'Venta' },
+      { id: 'detail', label: 'Detalle venta' },
+    ],
+  },
+  { id: 'inventory', label: 'Inventory', icon: 'I' },
+  { id: 'analytics', label: 'Analisis', description: 'En desarrollo', icon: 'A' },
 ]
 
-export function Sidebar({ activeSection, onSectionChange, onLogout, user }) {
+export function Sidebar({
+  activeSection,
+  activeSubsection,
+  onSectionChange,
+  onLogout,
+  user,
+}) {
   const theme = useTheme()
   const isDark = theme.theme === 'dark'
   const initials = (user?.name ?? 'Usuario')
@@ -35,22 +61,46 @@ export function Sidebar({ activeSection, onSectionChange, onLogout, user }) {
       </div>
 
       <nav className="sidebar__nav" aria-label="Secciones del dashboard">
-        {menuItems.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`sidebar__nav-item ${
-              activeSection === item.id ? 'is-active' : ''
-            }`}
-            onClick={() => onSectionChange(item.id)}
-          >
-            <span className="sidebar__nav-icon">{item.icon}</span>
-            <span className="sidebar__nav-text">
-              <strong>{item.label}</strong>
-              {item.description ? <small>{item.description}</small> : null}
-            </span>
-          </button>
-        ))}
+        {menuItems.map((item) => {
+          const isActive = activeSection === item.id
+          const isExpanded = Boolean(item.submenu) && isActive
+
+          return (
+            <div key={item.id} className={`sidebar__nav-group ${isExpanded ? 'is-expanded' : ''}`}>
+              <button
+                type="button"
+                className={`sidebar__nav-item ${isActive ? 'is-active' : ''}`}
+                onClick={() =>
+                  onSectionChange(item.id, item.submenu?.[0]?.id ?? null)
+                }
+                aria-expanded={isExpanded}
+              >
+                <span className="sidebar__nav-icon">{item.icon}</span>
+                <span className="sidebar__nav-text">
+                  <strong>{item.label}</strong>
+                  {item.description ? <small>{item.description}</small> : null}
+                </span>
+              </button>
+
+              {item.submenu ? (
+                <div className={`sidebar__submenu ${isExpanded ? 'is-open' : ''}`}>
+                  {item.submenu.map((subItem) => (
+                    <button
+                      key={subItem.id}
+                      type="button"
+                      className={`sidebar__submenu-item ${
+                        isActive && activeSubsection === subItem.id ? 'is-active' : ''
+                      }`}
+                      onClick={() => onSectionChange(item.id, subItem.id)}
+                    >
+                      {subItem.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
       </nav>
 
       <div className="sidebar__footer">

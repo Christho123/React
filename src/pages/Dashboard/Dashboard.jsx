@@ -7,15 +7,26 @@ import { Modal } from '../../components/ui/Modal/Modal.jsx'
 import {
   createBrand,
   createCategory,
+  createProduct,
+  createPurchase,
+  createSale,
   createSupplier,
   deleteBrand,
   deleteCategory,
+  deleteProduct,
   deleteSupplier,
   getBrands,
   getCategories,
+  getProducts,
+  getPurchase,
+  getPurchases,
+  getSale,
+  getSales,
   getSuppliers,
+  getStockMovements,
   updateBrand,
   updateCategory,
+  updateProduct,
   updateSupplier,
 } from '../../services/api.js'
 import { useAuth } from '../../hooks/useAuth.js'
@@ -130,6 +141,86 @@ const entityConfigs = {
   },
 }
 
+function buildProductConfig({ brandOptions = [], categoryOptions = [] }) {
+  return {
+    title: 'Productos',
+    entityLabel: 'producto',
+    pluralLabel: 'productos',
+    createLabel: 'Crear producto',
+    createSuccess: 'Producto creado correctamente.',
+    updateSuccess: 'Producto actualizado correctamente.',
+    deleteSuccess: 'Producto eliminado correctamente.',
+    emptyLabel: 'No hay productos registrados.',
+    listFn: getProducts,
+    createFn: createProduct,
+    updateFn: updateProduct,
+    deleteFn: deleteProduct,
+    initialForm: {
+      name: '',
+      description: '',
+      brand_id: '',
+      category_id: '',
+      price_purchase: 0,
+      price_sale: 0,
+      stock: 0,
+    },
+    fields: [
+      { name: 'name', label: 'Nombre', type: 'text', placeholder: 'Camisa Classic' },
+      {
+        name: 'description',
+        label: 'Descripcion',
+        type: 'textarea',
+        placeholder: 'Camisa de algodon',
+      },
+      {
+        name: 'brand_id',
+        label: 'Marca',
+        type: 'select',
+        placeholder: 'Selecciona una marca',
+        options: brandOptions,
+        coerce: 'number',
+      },
+      {
+        name: 'category_id',
+        label: 'Categoria',
+        type: 'select',
+        placeholder: 'Selecciona una categoria',
+        options: categoryOptions,
+        coerce: 'number',
+      },
+      {
+        name: 'price_purchase',
+        label: 'Precio compra',
+        type: 'number',
+        placeholder: '20',
+        coerce: 'number',
+      },
+      {
+        name: 'price_sale',
+        label: 'Precio venta',
+        type: 'number',
+        placeholder: '30.68',
+        coerce: 'number',
+      },
+      {
+        name: 'stock',
+        label: 'Stock',
+        type: 'number',
+        placeholder: '0',
+        coerce: 'number',
+      },
+    ],
+    columns: [
+      { key: 'name', label: 'Nombre' },
+      { key: 'brand.name', label: 'Marca' },
+      { key: 'category.name', label: 'Categoria' },
+      { key: 'price_purchase', label: 'Compra' },
+      { key: 'price_sale', label: 'Venta' },
+      { key: 'stock', label: 'Stock' },
+    ],
+  }
+}
+
 function normalizeList(payload) {
   const data = payload?.data ?? payload ?? []
   const items = Array.isArray(data) ? data : data?.data ?? []
@@ -138,6 +229,14 @@ function normalizeList(payload) {
     items,
     meta: payload?.meta ?? data?.meta ?? {},
   }
+}
+
+function getColumnValue(item, key) {
+  if (!key) {
+    return '-'
+  }
+
+  return key.split('.').reduce((current, part) => current?.[part], item) ?? '-'
 }
 
 function useEntityCrud({ config, enabled }) {
@@ -311,6 +410,168 @@ function useEntityCrud({ config, enabled }) {
   }
 }
 
+function useLookupOptions(loader, enabled) {
+  const [options, setOptions] = useState([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!enabled) {
+      setOptions([])
+      return
+    }
+
+    let cancelled = false
+
+    const load = async () => {
+      setLoading(true)
+
+      try {
+        const response = await loader()
+        const normalized = normalizeList(response)
+        const nextOptions = normalized.items.map((item) => ({
+          value: item.id,
+          label: item.name ?? `#${item.id}`,
+          raw: item,
+        }))
+
+        if (!cancelled) {
+          setOptions(nextOptions)
+        }
+      } catch {
+        if (!cancelled) {
+          setOptions([])
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [enabled, loader])
+
+  return { options, loading }
+}
+
+function useResourceList({ listFn, detailFn, enabled }) {
+  const [items, setItems] = useState([])
+  const [meta, setMeta] = useState({})
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [searchDraft, setSearchDraft] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [selectedId, setSelectedId] = useState(null)
+  const [selectedItem, setSelectedItem] = useState(null)
+
+  const reload = async (nextPage = page, nextPageSize = pageSize, nextSearch = searchTerm) => {
+    setLoading(true)
+    setError('')
+
+    try {
+      const response = await listFn({
+        page: nextPage,
+        pageSize: nextPageSize,
+        search: nextSearch,
+      })
+
+      const normalized = normalizeList(response)
+      setItems(normalized.items)
+      setMeta(normalized.meta)
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadDetail = async (id) => {
+    if (!detailFn || id == null) {
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
+    try {
+      const response = await detailFn(id)
+      const payload = response?.data ?? response ?? null
+      setSelectedItem(payload)
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!enabled) {
+      return
+    }
+
+    reload()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, page, pageSize, searchTerm])
+
+  useEffect(() => {
+    if (!enabled) {
+      setSelectedId(null)
+      setSelectedItem(null)
+    }
+  }, [enabled])
+
+  const submitSearch = (event) => {
+    event.preventDefault()
+    setPage(1)
+    setSearchTerm(searchDraft.trim())
+  }
+
+  const changePageSize = (nextSize) => {
+    setPage(1)
+    setPageSize(nextSize)
+  }
+
+  const goToPreviousPage = () => {
+    setPage((current) => Math.max(current - 1, 1))
+  }
+
+  const goToNextPage = () => {
+    const lastPage = meta.last_page ?? page
+    setPage((current) => Math.min(current + 1, lastPage))
+  }
+
+  const selectItem = (id) => {
+    setSelectedId(id)
+    loadDetail(id)
+  }
+
+  return {
+    items,
+    meta,
+    loading,
+    error,
+    searchDraft,
+    setSearchDraft,
+    page,
+    pageSize,
+    selectedId,
+    selectedItem,
+    submitSearch,
+    changePageSize,
+    goToPreviousPage,
+    goToNextPage,
+    selectItem,
+    reload,
+    setSelectedItem,
+  }
+}
+
 function DashboardWelcome({ user }) {
   return (
     <section className="panel panel--welcome">
@@ -339,6 +600,865 @@ function AnalysisEmpty() {
       </p>
     </section>
   )
+}
+
+function RecordTable({
+  items,
+  columns,
+  loading,
+  emptyLabel,
+  onSelect,
+  selectedId,
+  actionLabel = 'Ver detalle',
+}) {
+  return (
+    <div className="panel panel--table">
+      <div className="entity-table-shell">
+        {loading ? (
+          <div className="empty-state">Cargando...</div>
+        ) : items.length ? (
+          <table className="table">
+            <thead>
+              <tr>
+                {columns.map((column) => (
+                  <th key={column.key}>{column.label}</th>
+                ))}
+                {onSelect ? <th>Acciones</th> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id} className={selectedId === item.id ? 'is-selected' : ''}>
+                  {columns.map((column) => (
+                    <td key={column.key}>{getColumnValue(item, column.key)}</td>
+                  ))}
+                  {onSelect ? (
+                    <td>
+                      <div className="table-actions">
+                        <Button type="button" variant="secondary" onClick={() => onSelect(item.id)}>
+                          {actionLabel}
+                        </Button>
+                      </div>
+                    </td>
+                  ) : null}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="empty-state">{emptyLabel}</div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function todayDateInput() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function createLineItem() {
+  return {
+    product_id: '',
+    quantity: 1,
+    unit_price: '',
+  }
+}
+
+function normalizeLedgerItem(item) {
+  return {
+    product_id: Number(item.product_id),
+    quantity: Number(item.quantity),
+    unit_price: Number(item.unit_price),
+  }
+}
+
+function usePurchaseWorkspace(enabled) {
+  const list = useResourceList({
+    listFn: getPurchases,
+    detailFn: getPurchase,
+    enabled,
+  })
+  const supplierLookup = useLookupOptions(getSuppliers, enabled)
+  const productLookup = useLookupOptions(getProducts, enabled)
+  const [form, setForm] = useState({
+    supplier_id: '',
+    date: todayDateInput(),
+    items: [createLineItem()],
+  })
+
+  useEffect(() => {
+    if (!enabled) {
+      return
+    }
+
+    setForm({
+      supplier_id: '',
+      date: todayDateInput(),
+      items: [createLineItem()],
+    })
+  }, [enabled])
+
+  const updateLineItem = (index, field, value) => {
+    setForm((current) => ({
+      ...current,
+      items: current.items.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item,
+      ),
+    }))
+  }
+
+  const addLineItem = () => {
+    setForm((current) => ({
+      ...current,
+      items: [...current.items, createLineItem()],
+    }))
+  }
+
+  const removeLineItem = (index) => {
+    setForm((current) => {
+      const nextItems = current.items.filter((_, itemIndex) => itemIndex !== index)
+      return {
+        ...current,
+        items: nextItems.length ? nextItems : [createLineItem()],
+      }
+    })
+  }
+
+  const resetForm = () => {
+    setForm({
+      supplier_id: '',
+      date: todayDateInput(),
+      items: [createLineItem()],
+    })
+  }
+
+  const submitForm = async (event) => {
+    event.preventDefault()
+
+    await createPurchase({
+      supplier_id: Number(form.supplier_id),
+      date: form.date,
+      items: form.items.map(normalizeLedgerItem),
+    })
+
+    resetForm()
+    await list.reload()
+  }
+
+  return {
+    ...list,
+    supplierOptions: supplierLookup.options,
+    productOptions: productLookup.options,
+    suppliersLoading: supplierLookup.loading,
+    productsLoading: productLookup.loading,
+    form,
+    setForm,
+    updateLineItem,
+    addLineItem,
+    removeLineItem,
+    resetForm,
+    submitForm,
+  }
+}
+
+function useSalesWorkspace(enabled) {
+  const list = useResourceList({
+    listFn: getSales,
+    detailFn: getSale,
+    enabled,
+  })
+  const productLookup = useLookupOptions(getProducts, enabled)
+  const [form, setForm] = useState({
+    date: todayDateInput(),
+    tipo_comprobante: 'boleta',
+    items: [createLineItem()],
+  })
+
+  useEffect(() => {
+    if (!enabled) {
+      return
+    }
+
+    setForm({
+      date: todayDateInput(),
+      tipo_comprobante: 'boleta',
+      items: [createLineItem()],
+    })
+  }, [enabled])
+
+  const updateLineItem = (index, field, value) => {
+    setForm((current) => ({
+      ...current,
+      items: current.items.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item,
+      ),
+    }))
+  }
+
+  const addLineItem = () => {
+    setForm((current) => ({
+      ...current,
+      items: [...current.items, createLineItem()],
+    }))
+  }
+
+  const removeLineItem = (index) => {
+    setForm((current) => {
+      const nextItems = current.items.filter((_, itemIndex) => itemIndex !== index)
+      return {
+        ...current,
+        items: nextItems.length ? nextItems : [createLineItem()],
+      }
+    })
+  }
+
+  const resetForm = () => {
+    setForm({
+      date: todayDateInput(),
+      tipo_comprobante: 'boleta',
+      items: [createLineItem()],
+    })
+  }
+
+  const submitForm = async (event) => {
+    event.preventDefault()
+
+    await createSale({
+      date: form.date,
+      tipo_comprobante: form.tipo_comprobante,
+      items: form.items.map(normalizeLedgerItem),
+    })
+
+    resetForm()
+    await list.reload()
+  }
+
+  return {
+    ...list,
+    productOptions: productLookup.options,
+    productsLoading: productLookup.loading,
+    form,
+    setForm,
+    updateLineItem,
+    addLineItem,
+    removeLineItem,
+    resetForm,
+    submitForm,
+  }
+}
+
+function useInventoryWorkspace(enabled) {
+  return useResourceList({
+    listFn: getStockMovements,
+    detailFn: null,
+    enabled,
+  })
+}
+
+function PurchaseSection({ activeSubsection, workspace }) {
+  if (!workspace) {
+    return null
+  }
+
+  const {
+    items,
+    meta,
+    loading,
+    error,
+    searchDraft,
+    setSearchDraft,
+    page,
+    pageSize,
+    selectedId,
+    selectedItem,
+    supplierOptions,
+    productOptions,
+    form,
+    updateLineItem,
+    addLineItem,
+    removeLineItem,
+    submitSearch,
+    changePageSize,
+    goToPreviousPage,
+    goToNextPage,
+    selectItem,
+    submitForm,
+  } = workspace
+
+  const listColumns = [
+    { key: 'supplier.name', label: 'Proveedor' },
+    { key: 'date', label: 'Fecha' },
+    { key: 'subtotal', label: 'Subtotal' },
+    { key: 'igv', label: 'IGV' },
+    { key: 'total', label: 'Total' },
+  ]
+
+  return (
+    <section className="dashboard-content section-fade">
+      <div className="panel panel--toolbar">
+        <div className="panel__toolbar">
+          <div>
+            <span className="panel__eyebrow">Compras</span>
+            <h2>{activeSubsection === 'detail' ? 'Detalle de compra' : 'Registrar compra'}</h2>
+          </div>
+        </div>
+
+        <div className="panel__filters">
+          <form className="inline-form" onSubmit={submitSearch}>
+            <Input
+              name="search-purchases"
+              label="Buscar"
+              placeholder="Escribe un proveedor"
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+            />
+            <Button type="submit" variant="secondary">
+              Buscar
+            </Button>
+          </form>
+
+          <div className="panel__filters-right">
+            <label className="select-field">
+              <span>Por pagina</span>
+              <select value={pageSize} onChange={(event) => changePageSize(Number(event.target.value))}>
+                {PAGE_SIZES.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {activeSubsection === 'create' ? (
+        <div className="panel section-pane section-pane--active">
+          <div className="panel__toolbar">
+            <div>
+              <span className="panel__eyebrow">Compra</span>
+              <h2>Registrar compra</h2>
+            </div>
+          </div>
+
+          <form className="stack-form" onSubmit={submitForm}>
+            <label className="field">
+              <span className="field__label">Proveedor</span>
+              <select
+                className="field__control"
+                value={form.supplier_id}
+                onChange={(event) =>
+                  workspace.setForm((current) => ({
+                    ...current,
+                    supplier_id: event.target.value,
+                  }))
+                }
+              >
+                <option value="">Selecciona un proveedor</option>
+                {supplierOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <Input
+              name="purchase-date"
+              label="Fecha"
+              type="date"
+              value={form.date}
+              onChange={(event) =>
+                workspace.setForm((current) => ({
+                  ...current,
+                  date: event.target.value,
+                }))
+              }
+            />
+
+            {form.items.map((item, index) => (
+              <div key={index} className="purchase-line">
+                <label className="field">
+                  <span className="field__label">Producto</span>
+                  <select
+                    className="field__control"
+                    value={item.product_id}
+                    onChange={(event) => updateLineItem(index, 'product_id', event.target.value)}
+                  >
+                    <option value="">Selecciona un producto</option>
+                    {productOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <Input
+                  name={`quantity-${index}`}
+                  label="Cantidad"
+                  type="number"
+                  value={item.quantity}
+                  onChange={(event) => updateLineItem(index, 'quantity', event.target.value)}
+                />
+
+                <Input
+                  name={`unit-price-${index}`}
+                  label="Precio unitario"
+                  type="number"
+                  step="0.01"
+                  value={item.unit_price}
+                  onChange={(event) => updateLineItem(index, 'unit_price', event.target.value)}
+                />
+
+                <Button type="button" variant="ghost" onClick={() => removeLineItem(index)}>
+                  Quitar
+                </Button>
+              </div>
+            ))}
+
+            <div className="stack-form__actions">
+              <Button type="button" variant="secondary" onClick={addLineItem}>
+                Agregar producto
+              </Button>
+              <Button type="submit">Guardar compra</Button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {activeSubsection === 'detail' ? (
+        <div className="panel section-pane section-pane--active">
+          <div className="panel__toolbar">
+            <div>
+              <span className="panel__eyebrow">Detalle compra</span>
+              <h2>Selecciona una compra</h2>
+            </div>
+          </div>
+
+          {selectedItem ? (
+            <div className="detail-card">
+              <div className="detail-card__grid">
+                <div>
+                  <span>Proveedor</span>
+                  <strong>{selectedItem.supplier?.name ?? '-'}</strong>
+                </div>
+                <div>
+                  <span>Fecha</span>
+                  <strong>{selectedItem.date ?? '-'}</strong>
+                </div>
+                <div>
+                  <span>Total</span>
+                  <strong>{selectedItem.total ?? '-'}</strong>
+                </div>
+              </div>
+
+              <div className="detail-card__list">
+                {(selectedItem.details ?? []).map((detail) => (
+                  <div key={detail.id} className="detail-card__row">
+                    <strong>{detail.product?.name ?? 'Producto'}</strong>
+                    <span>
+                      {detail.quantity} x {detail.unit_price}
+                    </span>
+                    <span>Subtotal {detail.subtotal}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="empty-state">Selecciona una compra para ver el detalle.</div>
+          )}
+        </div>
+      ) : null}
+
+      {error ? <div className="form-alert">{error}</div> : null}
+
+      <RecordTable
+        items={items}
+        columns={listColumns}
+        loading={loading}
+        emptyLabel="No hay compras registradas."
+        onSelect={selectItem}
+        selectedId={selectedId}
+        actionLabel="Ver detalle"
+      />
+
+      <div className="pagination-bar">
+        <span>
+          Pagina {meta.current_page ?? page} de {meta.last_page ?? 1} | {meta.total ?? items.length} registros
+        </span>
+        <div className="pagination-actions">
+          <Button type="button" variant="secondary" onClick={goToPreviousPage} disabled={(meta.current_page ?? page) <= 1}>
+            Anterior
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={goToNextPage}
+            disabled={(meta.current_page ?? page) >= (meta.last_page ?? 1)}
+          >
+            Siguiente
+          </Button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SalesSection({ activeSubsection, workspace }) {
+  if (!workspace) {
+    return null
+  }
+
+  const {
+    items,
+    meta,
+    loading,
+    error,
+    searchDraft,
+    setSearchDraft,
+    page,
+    pageSize,
+    selectedId,
+    selectedItem,
+    productOptions,
+    form,
+    updateLineItem,
+    addLineItem,
+    removeLineItem,
+    submitSearch,
+    changePageSize,
+    goToPreviousPage,
+    goToNextPage,
+    selectItem,
+    submitForm,
+  } = workspace
+
+  const listColumns = [
+    { key: 'date', label: 'Fecha' },
+    { key: 'tipo_comprobante', label: 'Comprobante' },
+    { key: 'total', label: 'Total' },
+  ]
+
+  return (
+    <section className="dashboard-content section-fade">
+      <div className="panel panel--toolbar">
+        <div className="panel__toolbar">
+          <div>
+            <span className="panel__eyebrow">Ventas</span>
+            <h2>{activeSubsection === 'detail' ? 'Detalle de venta' : 'Registrar venta'}</h2>
+          </div>
+        </div>
+
+        <div className="panel__filters">
+          <form className="inline-form" onSubmit={submitSearch}>
+            <Input
+              name="search-sales"
+              label="Buscar"
+              placeholder="Escribe una boleta"
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+            />
+            <Button type="submit" variant="secondary">
+              Buscar
+            </Button>
+          </form>
+
+          <div className="panel__filters-right">
+            <label className="select-field">
+              <span>Por pagina</span>
+              <select value={pageSize} onChange={(event) => changePageSize(Number(event.target.value))}>
+                {PAGE_SIZES.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {activeSubsection === 'create' ? (
+        <div className="panel section-pane section-pane--active">
+          <div className="panel__toolbar">
+            <div>
+              <span className="panel__eyebrow">Venta</span>
+              <h2>Registrar venta</h2>
+            </div>
+          </div>
+
+          <form className="stack-form" onSubmit={submitForm}>
+            <Input
+              name="sale-date"
+              label="Fecha"
+              type="date"
+              value={form.date}
+              onChange={(event) =>
+                workspace.setForm((current) => ({
+                  ...current,
+                  date: event.target.value,
+                }))
+              }
+            />
+
+            <label className="field">
+              <span className="field__label">Tipo comprobante</span>
+              <select
+                className="field__control"
+                value={form.tipo_comprobante}
+                onChange={(event) =>
+                  workspace.setForm((current) => ({
+                    ...current,
+                    tipo_comprobante: event.target.value,
+                  }))
+                }
+              >
+                <option value="boleta">Boleta</option>
+                <option value="factura">Factura</option>
+                <option value="nota">Nota</option>
+              </select>
+            </label>
+
+            {form.items.map((item, index) => (
+              <div key={index} className="purchase-line">
+                <label className="field">
+                  <span className="field__label">Producto</span>
+                  <select
+                    className="field__control"
+                    value={item.product_id}
+                    onChange={(event) => updateLineItem(index, 'product_id', event.target.value)}
+                  >
+                    <option value="">Selecciona un producto</option>
+                    {productOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <Input
+                  name={`sale-quantity-${index}`}
+                  label="Cantidad"
+                  type="number"
+                  value={item.quantity}
+                  onChange={(event) => updateLineItem(index, 'quantity', event.target.value)}
+                />
+
+                <Input
+                  name={`sale-unit-price-${index}`}
+                  label="Precio unitario"
+                  type="number"
+                  step="0.01"
+                  value={item.unit_price}
+                  onChange={(event) => updateLineItem(index, 'unit_price', event.target.value)}
+                />
+
+                <Button type="button" variant="ghost" onClick={() => removeLineItem(index)}>
+                  Quitar
+                </Button>
+              </div>
+            ))}
+
+            <div className="stack-form__actions">
+              <Button type="button" variant="secondary" onClick={addLineItem}>
+                Agregar producto
+              </Button>
+              <Button type="submit">Guardar venta</Button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {activeSubsection === 'detail' ? (
+        <div className="panel section-pane section-pane--active">
+          <div className="panel__toolbar">
+            <div>
+              <span className="panel__eyebrow">Detalle venta</span>
+              <h2>Selecciona una venta</h2>
+            </div>
+          </div>
+
+          {selectedItem ? (
+            <div className="detail-card">
+              <div className="detail-card__grid">
+                <div>
+                  <span>Comprobante</span>
+                  <strong>{selectedItem.tipo_comprobante ?? '-'}</strong>
+                </div>
+                <div>
+                  <span>Fecha</span>
+                  <strong>{selectedItem.date ?? '-'}</strong>
+                </div>
+                <div>
+                  <span>Total</span>
+                  <strong>{selectedItem.total ?? '-'}</strong>
+                </div>
+              </div>
+
+              <div className="detail-card__list">
+                {(selectedItem.details ?? []).map((detail) => (
+                  <div key={detail.id} className="detail-card__row">
+                    <strong>{detail.product?.name ?? 'Producto'}</strong>
+                    <span>
+                      {detail.quantity} x {detail.unit_price}
+                    </span>
+                    <span>Subtotal {detail.subtotal}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="empty-state">Selecciona una venta para ver el detalle.</div>
+          )}
+        </div>
+      ) : null}
+
+      {error ? <div className="form-alert">{error}</div> : null}
+
+      <RecordTable
+        items={items}
+        columns={listColumns}
+        loading={loading}
+        emptyLabel="No hay ventas registradas."
+        onSelect={selectItem}
+        selectedId={selectedId}
+        actionLabel="Ver detalle"
+      />
+
+      <div className="pagination-bar">
+        <span>
+          Pagina {meta.current_page ?? page} de {meta.last_page ?? 1} | {meta.total ?? items.length} registros
+        </span>
+        <div className="pagination-actions">
+          <Button type="button" variant="secondary" onClick={goToPreviousPage} disabled={(meta.current_page ?? page) <= 1}>
+            Anterior
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={goToNextPage}
+            disabled={(meta.current_page ?? page) >= (meta.last_page ?? 1)}
+          >
+            Siguiente
+          </Button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function InventorySection({ workspace }) {
+  if (!workspace) {
+    return null
+  }
+
+  const {
+    items,
+    meta,
+    loading,
+    error,
+    searchDraft,
+    setSearchDraft,
+    page,
+    pageSize,
+    submitSearch,
+    changePageSize,
+    goToPreviousPage,
+    goToNextPage,
+  } = workspace
+
+  const columns = [
+    { key: 'product.name', label: 'Producto' },
+    { key: 'type', label: 'Tipo' },
+    { key: 'quantity', label: 'Cantidad' },
+    { key: 'reference_type', label: 'Referencia' },
+    { key: 'reference_id', label: 'ID Ref.' },
+    { key: 'date', label: 'Fecha' },
+  ]
+
+  return (
+    <section className="dashboard-content section-fade">
+      <div className="panel panel--toolbar">
+        <div className="panel__toolbar">
+          <div>
+            <span className="panel__eyebrow">Inventory</span>
+            <h2>Movimientos de stock</h2>
+          </div>
+        </div>
+
+        <div className="panel__filters">
+          <form className="inline-form" onSubmit={submitSearch}>
+            <Input
+              name="search-stock"
+              label="Buscar"
+              placeholder="Escribe un movimiento"
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+            />
+            <Button type="submit" variant="secondary">
+              Buscar
+            </Button>
+          </form>
+
+          <div className="panel__filters-right">
+            <label className="select-field">
+              <span>Por pagina</span>
+              <select value={pageSize} onChange={(event) => changePageSize(Number(event.target.value))}>
+                {PAGE_SIZES.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {error ? <div className="form-alert">{error}</div> : null}
+
+      <RecordTable
+        items={items}
+        columns={columns}
+        loading={loading}
+        emptyLabel="No hay movimientos de stock."
+      />
+
+      <div className="pagination-bar">
+        <span>
+          Pagina {meta.current_page ?? page} de {meta.last_page ?? 1} | {meta.total ?? items.length} registros
+        </span>
+        <div className="pagination-actions">
+          <Button type="button" variant="secondary" onClick={goToPreviousPage} disabled={(meta.current_page ?? page) <= 1}>
+            Anterior
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={goToNextPage}
+            disabled={(meta.current_page ?? page) >= (meta.last_page ?? 1)}
+          >
+            Siguiente
+          </Button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function PurchaseWorkspace({ workspace, activeSubsection }) {
+  return <PurchaseSection workspace={workspace} activeSubsection={activeSubsection} />
+}
+
+function SalesWorkspace({ workspace, activeSubsection }) {
+  return <SalesSection workspace={workspace} activeSubsection={activeSubsection} />
+}
+
+function InventoryWorkspace({ workspace }) {
+  return <InventorySection workspace={workspace} />
 }
 
 function EntityTable({ state }) {
@@ -432,7 +1552,7 @@ function EntityTable({ state }) {
                 {items.map((item) => (
                   <tr key={item.id}>
                     {config.columns.map((column) => (
-                      <td key={column.key}>{item[column.key] ?? '-'}</td>
+                      <td key={column.key}>{getColumnValue(item, column.key)}</td>
                     ))}
                     <td>
                       <div className="table-actions">
@@ -490,7 +1610,31 @@ function EntityTable({ state }) {
       >
         <form className="stack-form" onSubmit={submitForm}>
           {config.fields.map((field) =>
-            field.type === 'textarea' ? (
+            field.type === 'select' ? (
+              <label key={field.name} className="field">
+                {field.label ? <span className="field__label">{field.label}</span> : null}
+                <select
+                  className="field__control"
+                  value={form[field.name] ?? ''}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      [field.name]:
+                        field.coerce === 'number'
+                          ? Number(event.target.value)
+                          : event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">{field.placeholder ?? 'Selecciona una opcion'}</option>
+                  {(field.options ?? []).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : field.type === 'textarea' ? (
               <Input
                 key={field.name}
                 name={field.name}
@@ -517,7 +1661,10 @@ function EntityTable({ state }) {
                 onChange={(event) =>
                   setForm((current) => ({
                     ...current,
-                    [field.name]: event.target.value,
+                    [field.name]:
+                      field.coerce === 'number'
+                        ? Number(event.target.value)
+                        : event.target.value,
                   }))
                 }
               />
@@ -545,6 +1692,10 @@ function EntityTable({ state }) {
 export function DashboardPage() {
   const auth = useAuth()
   const [activeSection, setActiveSection] = useState('dashboard')
+  const [activeSubsection, setActiveSubsection] = useState(null)
+
+  const brandsLookup = useLookupOptions(getBrands, activeSection === 'products')
+  const categoriesLookup = useLookupOptions(getCategories, activeSection === 'products')
 
   const categories = useEntityCrud({
     config: entityConfigs.categories,
@@ -561,14 +1712,31 @@ export function DashboardPage() {
     enabled: activeSection === 'suppliers',
   })
 
+  const products = useEntityCrud({
+    config: buildProductConfig({
+      brandOptions: brandsLookup.options,
+      categoryOptions: categoriesLookup.options,
+    }),
+    enabled: activeSection === 'products',
+  })
+
+  const purchases = usePurchaseWorkspace(activeSection === 'purchases')
+  const sales = useSalesWorkspace(activeSection === 'sales')
+  const inventory = useInventoryWorkspace(activeSection === 'inventory')
+
   const sectionState = {
+    products,
     categories,
     brands,
     suppliers,
   }
 
-  const handleSectionChange = (section) => {
+  const handleSectionChange = (section, subsection = null) => {
     setActiveSection(section)
+    setActiveSubsection(
+      subsection ??
+        (section === 'purchases' || section === 'sales' ? 'create' : null),
+    )
   }
 
   return (
@@ -576,6 +1744,7 @@ export function DashboardPage() {
       sidebar={
         <Sidebar
           activeSection={activeSection}
+          activeSubsection={activeSubsection}
           onSectionChange={handleSectionChange}
           onLogout={auth.logout}
           user={auth.user}
@@ -593,10 +1762,29 @@ export function DashboardPage() {
 
         {activeSection === 'dashboard' ? <DashboardWelcome user={auth.user} /> : null}
         {activeSection === 'analytics' ? <AnalysisEmpty /> : null}
+        {activeSection === 'products' ? <EntityTable state={sectionState.products} /> : null}
 
         {activeSection === 'categories' ? <EntityTable state={sectionState.categories} /> : null}
         {activeSection === 'brands' ? <EntityTable state={sectionState.brands} /> : null}
         {activeSection === 'suppliers' ? <EntityTable state={sectionState.suppliers} /> : null}
+
+        {activeSection === 'purchases' ? (
+          <PurchaseWorkspace
+            workspace={purchases}
+            activeSubsection={activeSubsection ?? 'create'}
+          />
+        ) : null}
+
+        {activeSection === 'sales' ? (
+          <SalesWorkspace
+            workspace={sales}
+            activeSubsection={activeSubsection ?? 'create'}
+          />
+        ) : null}
+
+        {activeSection === 'inventory' ? (
+          <InventoryWorkspace workspace={inventory} />
+        ) : null}
       </DashboardLayout>
     )
 }
